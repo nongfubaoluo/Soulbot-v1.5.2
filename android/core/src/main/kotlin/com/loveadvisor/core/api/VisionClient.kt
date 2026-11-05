@@ -118,7 +118,7 @@ class VisionClient(private val transport: HttpTransport) {
             "model" to profile.selectedModelId,
             "messages" to listOf(mapOf("role" to "user", "content" to content)),
             "temperature" to 0,
-            "max_tokens" = if (requestedLimit <= 50) 2400 else (requestedLimit * 55).coerceAtMost(12000),
+            "max_tokens" to if (requestedLimit <= 50) 2400 else (requestedLimit * 55).coerceAtMost(12000),
             "stream" to false
         )
         if (ProviderPresets.detect(profile) == ProviderPresets.DEEPSEEK) payload["thinking"] =
@@ -226,7 +226,7 @@ class VisionClient(private val transport: HttpTransport) {
 
             val memberCount = o["memberCount"]?.takeIf { it.isJsonPrimitive && it.asJsonPrimitive.isNumber }
                 ?.let { runCatching { it.asBigDecimal.intValueExact() }.getOrNull() }
-                ?.takeIf { it in 1..10000 }
+                ?.takeIf { it in 1..100000 }
 
             cancel.check()
             VisionConversation(title, messages, media, positions, composer, conversationKind, memberCount)
