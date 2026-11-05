@@ -13,7 +13,7 @@ import com.loveadvisor.core.model.SessionToken
 
 enum class PanelDragMode { TITLE, TOP_GRIP }
 data class CapsuleMenuControls(val locked:Boolean,val scale:Float,val toggleLock:()->Boolean,val resize:(Float,Boolean)->Unit,val finishResize:()->Unit)
-class AdvisorPanelView(context:Context,private val onCopy:(ReplyPlan)->Unit,private val onFill:(ReplyPlan,SessionToken)->Unit,private val onRefresh:()->Unit,onRead:()->Unit,onMenu:(View)->Unit,onClose:()->Unit,private val isCurrent:(SessionToken)->Boolean,private val reduced:()->Boolean,private val onDetails:((ReplyPlan,SessionToken,(ReplyDetail?,String?)->Unit)->Unit)?=null,dragMode:PanelDragMode=PanelDragMode.TITLE,private val onResize:()->Unit={},private val frosted:Boolean=false,private val onEditingFocus:(Boolean)->Unit={},onAnalyze:()->Unit={}):FrameLayout(context) {
+class AdvisorPanelView(context:Context,private val onCopy:(ReplyPlan)->Unit,private val onFill:(ReplyPlan,SessionToken)->Unit,private val onRefresh:()->Unit,onRead:()->Unit,onMenu:(View)->Unit,onClose:()->Unit,private val isCurrent:(SessionToken)->Boolean,private val reduced:()->Boolean,private val onDetails:((ReplyPlan,SessionToken,(ReplyDetail?,String?)->Unit)->Unit)?=null,dragMode:PanelDragMode=PanelDragMode.TITLE,private val onResize:()->Unit={},private val frosted:Boolean=false,private val onEditingFocus:(Boolean)->Unit={},onAnalyze:()->Unit={},onProfileAnalyze:()->Unit={}):FrameLayout(context) {
     val dragHandle:View
     private val palette=PanelPalette(context,frosted)
     private val scoreLabel=if(com.loveadvisor.android.AppGraph.get(context).settings.load().judgeProvider=="CUSTOM")"评分" else "Jev"
@@ -67,6 +67,8 @@ class AdvisorPanelView(context:Context,private val onCopy:(ReplyPlan)->Unit,priv
         analysisRow.addView(read,LinearLayout.LayoutParams(dp(52),textRowHeight(28)).apply { leftMargin=dp(4) })
         listOf(analyze,read).forEach { it.textSize=10.5f;it.setPadding(dp(4),0,dp(4),0) }
         column.addView(analysisRow,rowParams(-2,5))
+        val profileAnalyze=palette.button("主页分析 · Soul / 牵手") { onProfileAnalyze() }.apply { contentDescription="选择 Soul 或牵手主页截图并分析";textSize=11f }
+        column.addView(profileAnalyze,rowParams(textRowHeight(30),7))
         status=palette.text(statusMessage,11f,palette.muted).apply { maxLines=2 }
         column.addView(status,rowParams(-2,10))
         val label=ViewStyles.row(context)

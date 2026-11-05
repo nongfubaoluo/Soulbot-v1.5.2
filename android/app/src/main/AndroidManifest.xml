@@ -25,6 +25,7 @@
         <activity android:name=".advisor.ImportActivity" android:exported="false"/>
         <activity android:name=".advisor.ComparisonActivity" android:exported="false"/>
         <activity android:name=".capture.CapturePreviewActivity" android:exported="false"/>
+        <activity android:name=".capture.ProfileImagePickerActivity" android:exported="false" android:theme="@style/Theme.LoveAdvisor"/>
         <activity android:name=".capture.ocr.ProjectionConsentActivity" android:exported="false"/>
         <activity android:name=".ui.PermissionsActivity" android:exported="false"/>
         <activity android:name=".ui.DiagnosticsActivity" android:exported="false"/>

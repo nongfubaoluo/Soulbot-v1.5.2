@@ -672,6 +672,7 @@ class ChatCaptureService:AccessibilityService() {
     } }
     fun islandReading(value:Boolean) { if(::island.isInitialized)island.updateStatus(value,graph.coordinator.state,graph.coordinator.state.current?.let { graph.tracker.sameConversation(it.ticket.session) }==true) }
     fun showFloating() { graph.settings.update { it.copy(overlayEnabled=true) }; checkForeground() }
+    fun showProfileAnalysisResult(result:String) { if(::overlay.isInitialized && overlayAllowed()) overlay.showProfileAnalysisResult(result) else notifyUser("主页分析已完成，请重新打开悬浮窗查看") }
     fun settingsChanged() { if(::island.isInitialized && !graph.settings.load().nativeIslandEnabled) { if(graph.settings.load().topCapsuleEnabled)island.suspend() else island.stop() };if(!canObserve()) leaveForeground() else checkForeground() }
     fun stopAssistance() {
         Logs.event(LogStep.UI_ACTION,reason=LogReason.UI_SERVICE_STOP)

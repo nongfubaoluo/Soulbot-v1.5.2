@@ -197,7 +197,7 @@ class OverlayController(private val service:ChatCaptureService) {
             }
         },{ service.refresh() },{ service.captureNow() },{ anchor ->
             panel?.toggleMenu(listOf("回复风格设置" to { editReplyStyle() },"悬浮窗设置" to { editOverlaySettings() },"模型设置" to { editModelSettings() }),capsuleMenuControls())
-        },{ hide() },{ graph.tracker.isCurrent(it) && ChatApps.supported(it.packageName) },{ graph.settings.load().reducedMotion },{ plan,token,callback -> service.describe(plan,token,callback) },if(native) PanelDragMode.TOP_GRIP else PanelDragMode.TITLE,onResize={ layout() },frosted=useFrostedWindow,onEditingFocus={ panelEditingFocus(it) },onAnalyze={ showMessageAnalysis() })
+        },{ hide() },{ graph.tracker.isCurrent(it) && ChatApps.supported(it.packageName) },{ graph.settings.load().reducedMotion },{ plan,token,callback -> service.describe(plan,token,callback) },if(native) PanelDragMode.TOP_GRIP else PanelDragMode.TITLE,onResize={ layout() },frosted=useFrostedWindow,onEditingFocus={ panelEditingFocus(it) },onAnalyze={ showMessageAnalysis() },onProfileAnalyze={ startProfileAnalysis() })
         view.contentDescription="聊天候选面板"
         panel=view; panelParams=params(1,1,"LoveAdvisorPanel"); panelOnLeft=null
         view.setOnApplyWindowInsetsListener { _,insets ->
@@ -305,6 +305,18 @@ class OverlayController(private val service:ChatCaptureService) {
         }
     }
     private fun readSnapshot()=service.currentChatSnapshot?.takeIf { graph.tracker.currentToken!=null && graph.tracker.lastSnapshot==it }
+    private fun startProfileAnalysis() {
+        try {
+            service.startActivity(android.content.Intent(service,com.loveadvisor.android.capture.ProfileImagePickerActivity::class.java).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+        } catch(error:Exception) {
+            service.notifyUser("无法打开主页截图选择器，请从相册选择截图")
+        }
+    }
+    fun showProfileAnalysisResult(result:String) {
+        val view=panel ?: run { showPanel(false);panel } ?: return
+        view.showPage("profile-analysis",ProfileAnalysisResultView(service,result))
+        layout()
+    }
     private fun showMessageAnalysis() {
         val view=panel ?: return
         val snapshot=readSnapshot()

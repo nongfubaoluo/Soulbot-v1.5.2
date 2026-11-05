@@ -1,3 +1,12 @@
+# V1.5.2 profile analysis overlay update
+
+- Added a dedicated “主页分析 · Soul / 牵手” entry to the existing floating assistant panel.
+- Added image selection for Soul and 牵手 profile screenshots, using the configured vision model.
+- Added profile-specific analysis prompts for visible profile details, interests, conversation topics, suggested openers, and respectful boundaries.
+- Added an in-panel, scrollable result page with copy support.
+- Restored 43 URL-escaped knowledge asset filenames so all 46 entries in `knowledge/index.json` resolve to packaged files.
+- Existing chat analysis and reply generation flows remain in place.
+
 ## V1.5.2
 
 - 新增独立的主页资料分析与私聊开场白页面，复用现有模型配置和 Chat Completions 客户端。
