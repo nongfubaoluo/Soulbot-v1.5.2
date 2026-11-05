@@ -67,6 +67,7 @@ class MainActivity : BaseActivity() {
         hero.addView(ViewStyles.button(this,"连接聊天悬浮窗",true) { open(PermissionsActivity::class.java) })
         hero.addView(ViewStyles.text(this,"无障碍：${AccessibilityConnectionStatus.label(this)}",12f,ViewStyles.MUTED))
         hero.addView(ViewStyles.button(this,"完整咨询 / 润色草稿") { open(ConsultationActivity::class.java) })
+        hero.addView(ViewStyles.button(this,"主页分析 / 私聊开场白",true) { open(com.loveadvisor.android.advisor.SocialAssistantActivity::class.java) })
         val config=graph.settings.load(); val model=ViewStyles.card(this); body.addView(model); model.addView(ViewStyles.text(this,"你的模型",19f,bold=true)); model.addView(ViewStyles.text(this,config.profile.selectedModelId ?: "填写服务地址与密钥，刷新选择模型",14f,ViewStyles.MUTED)); model.addView(ViewStyles.button(this,"模型与连接设置") { open(SettingsActivity::class.java) })
         body.addView(ViewStyles.switch(this,"启用聊天悬浮窗",config.overlayEnabled) { enabled -> graph.settings.update { it.copy(overlayEnabled=enabled) }; if(!enabled && com.loveadvisor.core.capture.CapturePolicy.invalidateForDisabledCapture(graph.tracker.currentToken)) graph.controller.invalidate(); ChatCaptureService.instance?.settingsChanged() })
         body.addView(ViewStyles.button(this,"悬浮窗设置 · " + if(config.topCapsuleEnabled) "左上角胶囊" else "${config.bubbleAutoHideSeconds}秒后隐藏") { open(OverlaySettingsActivity::class.java) })
