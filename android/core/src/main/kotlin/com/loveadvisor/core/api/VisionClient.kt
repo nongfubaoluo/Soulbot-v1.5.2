@@ -170,7 +170,8 @@ class VisionClient(private val transport: HttpTransport) {
             require(com.loveadvisor.core.advisor.NicknameText.valid(title))
             val limit = ConversationContextPolicy.limit(conversationKind, requestedLimit)
             val rows = o["messages"].asJsonArray
-            require(rows.size in 1..300)
+            // ✅ JsonArray 使用 .size() 带括号，适配你项目旧版Gson
+            require(rows.size() in 1..300)
 
             val media = mutableSetOf<String>()
             val positions = mutableMapOf<String, Double>()
@@ -216,11 +217,15 @@ class VisionClient(private val transport: HttpTransport) {
                 }
                 ChatMessage(id, speaker, sender, text, quote, messageKind)
             }
+            // ✅ messages 是Kotlin List，普通集合，使用 .size 不带括号
             require(messages.size in 1..limit)
 
             val composer = runCatching {
-                o["composer"]?.takeIf { it.isJsonArray && it.asJsonArray.size == 4 }?.asJsonArray?.let {
-                    RectI(it[0].asInt, it[1].asInt, it[2].asInt, it[3].asInt)
+                val arr = o["composer"]?.takeIf { it.isJsonArray }?.asJsonArray
+                if(arr != null && arr.size() == 4){
+                    RectI(arr[0].asInt, arr[1].asInt, arr[2].asInt, arr[3].asInt)
+                }else{
+                    null
                 }
             }.getOrNull()
 
