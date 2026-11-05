@@ -1,0 +1,23 @@
+V1.5.1 source preview build status
+
+Source changes:
+- Added platform-specific visual recognition guidance for Soul and Qianshou.
+- Added unit tests for the visual guidance.
+- Bumped Android app metadata to versionCode 43 / versionName V1.5.1.
+- Preserved the existing app modules and Goutoujunshi knowledge assets.
+
+Checks completed in this environment:
+- Kotlin compiler smoke test for ChatApps + VisualChatPlatformGuidance: PASS.
+- App policy static check: PASS.
+- Source reference verification: PASS (59 + 53 reference entries, zero mismatches).
+- Manifest package visibility and service platform mapping: PASS.
+
+Not completed:
+- Gradle unit tests.
+- Android APK assembly, signing, APK inspection, or device installation test.
+
+Reason:
+- No Gradle distribution is cached in this environment; Gradle 8.9 download failed with UnknownHostException for services.gradle.org.
+- No Android SDK/platform 35 or Android build-tools 35.0.0 is installed locally, and external downloads are unavailable.
+
+This ZIP is source code, not an APK. Do not install it as an Android app.
