@@ -16,7 +16,8 @@ class VisionClient(private val transport:HttpTransport) {
         require(profile.apiKey.isNotBlank() && profile.apiKey.none { it.isISOControl() }) { "请填写有效的视觉 API Key" }
         require(imageDataUrl.startsWith("data:image/") && imageDataUrl.length<=12000000) { "主页截图过大，请选择清晰度较低的截图" }
         val platformName=if(platform=="SOUL")"Soul" else "牵手"
-        val prompt="""你是社交主页资料分析助手。当前截图来自$platformName个人主页。请只根据截图中清晰可见的信息分析，不得猜测身份、真实姓名、收入、职业细节、性格定论或未展示的经历；不确定处明确标注。忽略状态栏、系统通知和无关控件。
+val platformName=if(platform=="SOUL")"Soul" else "牵手"
+val prompt="""你是社交主页资料分析助手。当前截图来自${platformName}个人主页。请只根据截图中清晰可见的信息分析，不得猜测身份、真实姓名、收入、职业细节、性格定论或未展示的经历；不确定处明确标注。忽略状态栏、系统通知和无关控件。
 请用简体中文输出，按以下结构：
 一、主页资料：可见昵称、年龄、职业/身份、地区等（没有显示写未显示）。
 二、兴趣与生活方式：只列出截图有证据支持的兴趣、标签、动态主题。
