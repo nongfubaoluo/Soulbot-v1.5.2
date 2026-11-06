@@ -7,6 +7,19 @@ import com.loveadvisor.core.model.*
 import com.loveadvisor.core.capture.ChatApps
 import com.loveadvisor.core.capture.ConversationContextPolicy
 import com.loveadvisor.core.capture.VisualChatPlatformGuidance
+import com.loveadvisor.core.http.HttpTransport
+import com.loveadvisor.core.profile.ApiProfile
+import com.loveadvisor.core.http.ApiRequest
+import com.loveadvisor.core.endpoint.EndpointResolver
+import com.loveadvisor.core.preset.ProviderPresets
+import com.loveadvisor.core.model.ModelCatalogClient
+import com.loveadvisor.core.model.ChatQuote
+import com.loveadvisor.core.model.Speaker
+import com.loveadvisor.core.model.MessageKind
+import com.loveadvisor.core.model.ChatKind
+import com.loveadvisor.core.model.RectI
+import com.loveadvisor.core.util.Cancellation
+import com.loveadvisor.core.advisor.NicknameText
 import java.util.concurrent.CancellationException
 
 // 扩展函数放到最前面，优先编译，防止找不到
