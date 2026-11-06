@@ -24,10 +24,8 @@ jobs:
         run: |
           cd android
           chmod +x gradlew
-# 先单独编译core模块，直接打印完整kotlin报错
-./gradlew :core:compileKotlin
-# core编译成功才继续打包apk
-./gradlew :app:assembleDebug
+          ./gradlew :core:compileKotlin
+          ./gradlew :app:assembleDebug
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
