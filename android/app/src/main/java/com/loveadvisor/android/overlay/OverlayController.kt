@@ -306,15 +306,11 @@ class OverlayController(private val service:ChatCaptureService) {
     }
     private fun readSnapshot()=service.currentChatSnapshot?.takeIf { graph.tracker.currentToken!=null && graph.tracker.lastSnapshot==it }
     private fun startProfileAnalysis() {
-        try {
-            service.startActivity(android.content.Intent(service,com.loveadvisor.android.capture.ProfileImagePickerActivity::class.java).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
-        } catch(error:Exception) {
-            service.notifyUser("无法打开主页截图选择器，请从相册选择截图")
-        }
+        service.startProfileAccessibilityAnalysis()
     }
-    fun showProfileAnalysisResult(result:String) {
+    fun showProfileAnalysisResult(result:String,platform:String="主页",source:String="") {
         val view=panel ?: run { showPanel(false);panel } ?: return
-        view.showPage("profile-analysis",ProfileAnalysisResultView(service,result))
+        view.showPage("profile-analysis",ProfileAnalysisResultView(service,result,platform,source))
         layout()
     }
     private fun showMessageAnalysis() {

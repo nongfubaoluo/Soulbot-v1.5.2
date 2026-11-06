@@ -5,10 +5,11 @@ import com.loveadvisor.core.memory.*
 import com.loveadvisor.core.model.*
 import com.loveadvisor.core.knowledge.KnowledgeDocument
 data class SavedChat(val objectId:String,val messages:List<ChatMessage>,val createdAt:Long=System.currentTimeMillis())
-data class ProfileData(val self:RelationshipProfile=RelationshipProfile("self","本人"),val objects:List<RelationshipProfile> = emptyList(),val notes:List<KnowledgeDocument> = emptyList(),val history:List<SavedChat> = emptyList())
+data class ProfileAnalysisRecord(val id:String,val platform:String,val visibleText:String,val analysis:String,val createdAt:Long=System.currentTimeMillis())
+data class ProfileData(val self:RelationshipProfile=RelationshipProfile("self","本人"),val objects:List<RelationshipProfile> = emptyList(),val notes:List<KnowledgeDocument> = emptyList(),val history:List<SavedChat> = emptyList(),val profileAnalyses:List<ProfileAnalysisRecord> = emptyList())
 class ProfileStore(private val store:AndroidDocumentStore) {
     private val gson=Gson()
-    @Synchronized fun load():ProfileData=store.read("profiles")?.let { gson.fromJson(it,ProfileData::class.java) } ?: ProfileData()
+    @Synchronized fun load():ProfileData=store.read("profiles")?.let { raw -> gson.fromJson(raw,ProfileData::class.java).let { it.copy(profileAnalyses=it.profileAnalyses ?: emptyList()) } } ?: ProfileData()
     @Synchronized fun save(data:ProfileData)=store.write("profiles",gson.toJson(data))
     fun find(id:String?)=load().objects.find { it.id==id }
     @Synchronized fun withExisting(id:String?,operation:(RelationshipProfile)->Unit) { load().objects.find { it.id==id }?.let(operation) }
@@ -16,6 +17,10 @@ class ProfileStore(private val store:AndroidDocumentStore) {
         val data=load(); save(if(profile.id=="self") data.copy(self=profile) else data.copy(objects=data.objects.filter { it.id!=profile.id }+profile))
     }
     @Synchronized fun delete(id:String) { val d=load(); save(d.copy(objects=d.objects.filter { it.id!=id },history=d.history.filter { it.objectId!=id })) }
+
+    @Synchronized fun rememberProfileAnalysis(platform:String,visibleText:String,analysis:String) {
+        val d=load(); val item=ProfileAnalysisRecord(java.util.UUID.randomUUID().toString(),platform,visibleText.take(12000),analysis.take(16000)); save(d.copy(profileAnalyses=(d.profileAnalyses+item).takeLast(100)))
+    }
     @Synchronized fun rememberChat(id:String,snapshot:ChatSnapshot) {
         val d=load(); if(d.objects.none { it.id==id }) return
         val previous=d.history.filter { it.objectId==id }
