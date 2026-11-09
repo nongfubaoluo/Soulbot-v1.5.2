@@ -22,3 +22,8 @@
 - 增加自动灵魂匹配开关、0–100 匹配阈值、匹配识别次数统计。匹配依据为双方明确展示的兴趣和话题，匹配度仅作启发式参考。
 - 达到阈值后尝试返回上一页并读取聊天，将推荐开场白填入空白聊天输入框。自动发送默认关闭；用户主动开启后，仅在草稿完全匹配且唯一识别到发送按钮时尝试点击发送。
 - 所有主页内容和匹配记录保存在本机 ProfileStore。
+
+## Kotlin compile fixes (2026-11-09)
+- Added the missing `ReplyFiller` import used when filling the recommended opener after returning to chat.
+- Converted the `Throwable` supplied by `runCatching` into an `Exception` before passing it to diagnostic and safe-error APIs, whose signatures require `Exception`.
+- Braced `$platform` interpolation before Chinese suffixes (`主页资料`, `主页`) so Kotlin does not parse the suffix as part of an unresolved identifier.

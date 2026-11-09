@@ -19,6 +19,7 @@ import java.io.ByteArrayOutputStream
 import java.util.concurrent.Executors
 import java.util.UUID
 import com.loveadvisor.core.advisor.ReplyPlan
+import com.loveadvisor.android.input.ReplyFiller
 import com.loveadvisor.android.input.VisualFillReference
 import com.loveadvisor.android.input.VerifiedInputMethod
 import com.loveadvisor.core.input.ComposerFocusResult
@@ -695,7 +696,7 @@ class ChatCaptureService:AccessibilityService() {
     private fun readProfilePage():Pair<String,String>? {
         if(!::reader.isInitialized) { notifyUser("无障碍服务尚未连接");return null }
         val found=runCatching { reader.readVisibleApplicationText(setOf(ChatApps.SOUL,ChatApps.QIANSHOU)) }.getOrElse { error ->
-            Logs.failed(LogStep.READ_NATIVE,error);notifyUser("主页读取失败：${graph.safeError(error)}");null
+            val cause=error as? Exception ?: RuntimeException(error);Logs.failed(LogStep.READ_NATIVE,cause);notifyUser("主页读取失败：${graph.safeError(cause)}");null
         } ?: run { notifyUser("请先打开 Soul 或牵手的个人主页");return null }
         val platform=when(found.first) { ChatApps.SOUL -> "Soul";ChatApps.QIANSHOU -> "牵手";else -> "主页" }
         if(found.second.length<12) { notifyUser("当前主页没有可读取的文字，请等待页面加载后重试");return null }
@@ -705,7 +706,7 @@ class ChatCaptureService:AccessibilityService() {
     fun readProfileAccessibilityPage() {
         val (platform,source)=readProfilePage() ?: return
         graph.profiles.rememberTargetHomepage(platform,source)
-        notifyUser("已读取$platform主页资料（${source.length}字），点击主页分析进行分析和匹配")
+        notifyUser("已读取${platform}主页资料（${source.length}字），点击主页分析进行分析和匹配")
     }
 
     fun analyzeReadProfile() {
@@ -717,7 +718,7 @@ class ChatCaptureService:AccessibilityService() {
     /** Read, analyze and persist the user's own profile from the currently open self-profile page. */
     fun startMyHomepageAnalysis() {
         val (platform,source)=readProfilePage() ?: return
-        notifyUser("正在分析并保存我的$platform主页…")
+        notifyUser("正在分析并保存我的${platform}主页…")
         profileWorker.execute {
             try {
                 val config=graph.settings.load()
