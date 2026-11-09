@@ -1,4 +1,4 @@
-# 对话军师
+# 对话军师1.6
 
 <img src="docs/images/logo.png" alt="对话军师 Logo" width="96" />
 
