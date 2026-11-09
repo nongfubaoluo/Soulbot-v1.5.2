@@ -315,8 +315,29 @@ class OverlayController(private val service:ChatCaptureService) {
     fun setProfileReadStatus(read:Boolean,detail:String="") { panel?.setProfileReadStatus(read,detail) }
     fun showProfileAnalysisResult(result:String,platform:String="主页",source:String="") {
         val view=panel ?: run { showPanel(false);panel } ?: return
-        view.showPage("profile-analysis",ProfileAnalysisResultView(service,result,platform,source))
+        view.showPage("profile-analysis",ProfileAnalysisResultView(service,result,platform,source,{
+            view.closeStyleEditor()
+            layout()
+        },{ text -> fillHomepageOpening(view,text) }))
         layout()
+    }
+    private fun fillHomepageOpening(view:AdvisorPanelView,text:String) {
+        val token=graph.tracker.currentToken
+        if(token==null || !graph.tracker.isCurrent(token) || readSnapshot()==null) {
+            service.notifyUser("请先进入聊天页面并点击读取信息，再输入开场白")
+            return
+        }
+        if(filling || reading || state.loading) { service.notifyUser("请等待当前操作完成");return }
+        filling=true;view.setFilling(true)
+        cancelFill=ReplyFiller(service).fill(token,text,{ draft,confirm,cancel ->
+            confirmation?.close()
+            confirmation=DraftConfirmWindow(service,draft,{ confirmation=null;confirm() },{ confirmation=null;cancel() })
+            confirmation?.show()
+        },{ success,message ->
+            cancelFill=null;filling=false;confirmation?.close();confirmation=null;view.setFilling(false)
+            view.fillResult(message);service.notifyUser(message)
+            if(success && graph.settings.load().fillPanelBehavior!="keep") hide() else layout()
+        })
     }
     private fun showMessageAnalysis() {
         val view=panel ?: return

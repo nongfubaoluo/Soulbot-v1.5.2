@@ -26,7 +26,8 @@ class MyHomepageSettingsView(
     init {
         orientation=VERTICAL
         addView(palette.text("我的主页分析",19f,bold=true),row(8))
-        addView(palette.text("先打开 Soul 或牵手的本人主页，再点击读取并分析。识别结果会保存到本机；下方可以手动修改识别到的主页参数。",12f,palette.muted),row(10))
+        addView(palette.text("先打开 Soul 或牵手的本人主页，再点击读取并分析。识别结果会保存到本机；下方可以手动修改识别到的主页参数。",12f,palette.muted),row(8))
+        addView(palette.actionButton("读取并分析我的主页",true) { onReadAndSave() },row(10))
         autoMatch.text="启用自动灵魂匹配"
         autoMatch.isChecked=graph.settings.load().autoSoulMatchEnabled
         autoMatch.setTextColor(palette.ink);addView(autoMatch,row(4))
@@ -53,10 +54,9 @@ class MyHomepageSettingsView(
         }
         addView(palette.text("本人主页原始资料",12f,palette.ink,true),row(4));addView(sourceInput,row(8))
         addView(palette.text("识别参数（可直接修改）",12f,palette.ink,true),row(4));addView(parametersInput,row(8))
-        addView(palette.actionButton("读取并分析我的主页",true) { onReadAndSave() },row(8))
-        addView(palette.actionButton("保存修改后的主页参数",heightDp=42) { saveProfileEdits() },row(8))
+        addView(palette.actionButton("保存个人主页资料",true,heightDp=42) { saveProfileEdits() },row(8))
         addView(palette.actionButton("保存匹配设置",heightDp=42) { saveSettings() },row(8))
-        addView(palette.actionButton("返回回复风格",heightDp=42) { onBack() },row(0))
+        addView(palette.actionButton("返回悬浮窗主页",heightDp=42) { onBack() },row(0))
         refreshSummary()
     }
     /** Reload the profile after background analysis has persisted it. */
