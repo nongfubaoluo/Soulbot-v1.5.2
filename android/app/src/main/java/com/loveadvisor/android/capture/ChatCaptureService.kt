@@ -39,6 +39,8 @@ class ChatCaptureService:AccessibilityService() {
     private val nativeWorker=Executors.newSingleThreadExecutor { r -> Thread(r,"wechat-native-reader") }
     private val foregroundWorker=Executors.newSingleThreadExecutor { r -> Thread(r,"chat-foreground-metadata") }
     private val profileWorker=Executors.newSingleThreadExecutor { r -> Thread(r,"profile-accessibility-analysis") }
+    private data class PendingProfileReply(val text:String,val autoSend:Boolean)
+    @Volatile private var pendingProfileReply:PendingProfileReply?=null
     private val foregroundGate=CaptureReadGate()
     private val readGate=CaptureReadGate()
     private val manualRead=ManualReadGate()
@@ -366,6 +368,21 @@ class ChatCaptureService:AccessibilityService() {
         worker.execute { Logs.recover(LogStep.LOCAL_TASK) { graph.recent.remember(merged) } }
         graph.currentObjectId=null; graph.controller.analyze(merged,objectId=null,diagnosticParent=readLog)
         finishRead(ticket)
+        pendingProfileReply?.let { pending ->
+            pendingProfileReply=null
+            val token=graph.tracker.currentToken
+            if(token!=null && graph.tracker.lastSnapshot==merged) main.postDelayed({
+                if(graph.tracker.isCurrent(token) && conversation.current==merged) {
+                    ReplyFiller(this).fill(token,pending.text) { success,message ->
+                        if(!success) notifyUser("匹配开场白未能自动填入：$message")
+                        else if(pending.autoSend) nativeWorker.execute {
+                            val sent=runCatching { reader.clickSendMessageIfSafe(pending.text) }.getOrDefault(false)
+                            main.post { notifyUser(if(sent) "已发送匹配度最高的开场白" else "开场白已填入，但未能安全识别发送按钮，请检查后手动发送") }
+                        } else notifyUser("已将匹配度最高的开场白填入聊天草稿，请检查后发送")
+                    }
+                } else notifyUser("聊天页面已变化，未自动填入开场白")
+            },650) else notifyUser("未能确认返回的聊天页面，请手动点击读取信息")
+        }
     }
     private fun captureVision(w:WindowSnapshot,ticket:ManualReadGate.Ticket) {
         if(!manualRead.accepts(ticket)) return
@@ -674,49 +691,89 @@ class ChatCaptureService:AccessibilityService() {
     } }
     fun islandReading(value:Boolean) { if(::island.isInitialized)island.updateStatus(value,graph.coordinator.state,graph.coordinator.state.current?.let { graph.tracker.sameConversation(it.ticket.session) }==true) }
     fun showFloating() { graph.settings.update { it.copy(overlayEnabled=true) }; checkForeground() }
-    /** Explicit user action only: read visible accessibility text from Soul/Tantan profile page. */
-    fun startProfileAccessibilityAnalysis() {
-        if(stopping) { notifyUser("辅助服务正在停止，请稍后重试"); return }
-        if(!::reader.isInitialized) { notifyUser("无障碍服务尚未连接，请先开启军师无障碍权限"); return }
-        notifyUser("正在读取当前 Soul / 牵手主页…")
-        val captured=try {
-            reader.readVisibleApplicationText(setOf(ChatApps.SOUL,ChatApps.QIANSHOU))
-        } catch(error:Exception) {
-            Logs.failed(LogStep.READ_NATIVE,error)
-            notifyUser("读取主页失败：${graph.safeError(error)}")
-            return
-        }
-        if(captured==null) {
-            notifyUser("未检测到 Soul 或牵手主页。请先打开对方主页，再点击主页分析")
-            return
-        }
-        val (pkg,snapshot)=captured
-        val platform=when(pkg) {
-            ChatApps.SOUL -> "Soul"
-            ChatApps.QIANSHOU -> "牵手"
-            else -> { notifyUser("当前应用暂不支持主页分析"); return }
-        }
-        if(snapshot.length<12) {
-            notifyUser("已连接 $platform，但没有读取到主页文字。请等待资料加载完成后重试")
-            return
-        }
-        val config=graph.settings.load()
-        if(config.profile.apiKey.isBlank()) { notifyUser("请先在模型设置中填写对话模型 API Key"); return }
-        if(config.profile.selectedModelId.isNullOrBlank()) { notifyUser("请先在模型设置中选择对话模型"); return }
-        notifyUser("已读取 $platform 主页，正在分析…")
+    /** Read only the visible profile text from Soul or 牵手 after an explicit button tap. */
+    private fun readProfilePage():Pair<String,String>? {
+        if(!::reader.isInitialized) { notifyUser("无障碍服务尚未连接");return null }
+        val found=runCatching { reader.readVisibleApplicationText(setOf(ChatApps.SOUL,ChatApps.QIANSHOU)) }.getOrElse { error ->
+            Logs.failed(LogStep.READ_NATIVE,error);notifyUser("主页读取失败：${graph.safeError(error)}");null
+        } ?: run { notifyUser("请先打开 Soul 或牵手的个人主页");return null }
+        val platform=when(found.first) { ChatApps.SOUL -> "Soul";ChatApps.QIANSHOU -> "牵手";else -> "主页" }
+        if(found.second.length<12) { notifyUser("当前主页没有可读取的文字，请等待页面加载后重试");return null }
+        return platform to found.second
+    }
+
+    fun readProfileAccessibilityPage() {
+        val (platform,source)=readProfilePage() ?: return
+        graph.profiles.rememberTargetHomepage(platform,source)
+        notifyUser("已读取$platform主页资料（${source.length}字），点击主页分析进行分析和匹配")
+    }
+
+    fun analyzeReadProfile() {
+        val record=graph.profiles.load().latestTargetHomepage
+        if(record==null || record.visibleText.isBlank()) { notifyUser("请先点击主页读取，再点击主页分析");return }
+        analyzeProfileRecord(record,isSelf=false)
+    }
+
+    /** Read, analyze and persist the user's own profile from the currently open self-profile page. */
+    fun startMyHomepageAnalysis() {
+        val (platform,source)=readProfilePage() ?: return
+        notifyUser("正在分析并保存我的$platform主页…")
         profileWorker.execute {
             try {
-                val prompt="你是谨慎、尊重边界的社交沟通助手。以下是用户当前主动打开的${platform}个人主页中由Android无障碍接口读取到的可见文字。只依据这些文字分析，不猜测外貌、收入、身份、性格诊断或未展示信息；资料不足要明确说明。请用中文按以下结构输出：\n【主页信息摘要】\n【兴趣与可能话题】\n【适合的沟通切入点】\n【需要避免的误判】\n【私聊开场白】给出5条自然、不油腻、不冒犯的短句。\n\n主页可见文字：\n$snapshot"
-                val result=graph.chat.complete(config.profile,listOf(PromptMessage("system","你是社交主页分析助手。分析必须基于可见资料，不做敏感属性推断。"),PromptMessage("user",prompt)),Cancellation(),1800)
-                if(result.isBlank()) throw IllegalStateException("模型返回内容为空")
-                graph.profiles.rememberProfileAnalysis(platform,snapshot,result)
-                main.post { if(instance===this && !stopping) showProfileAnalysisResult(result,platform,snapshot) }
-            } catch(error:Exception) {
-                val message=graph.safeError(error)
-                main.post { if(instance===this && !stopping) notifyUser("主页分析失败：$message") }
-            }
+                val config=graph.settings.load()
+                require(config.profile.apiKey.isNotBlank()) { "请先配置对话模型 API Key" }
+                require(!config.profile.selectedModelId.isNullOrBlank()) { "请先选择对话模型" }
+                val prompt="请整理用户自己的社交主页资料，供后续与其他主页进行兴趣和话题匹配。只根据可见文字，不推断敏感属性或未展示事实。请按：个人资料摘要、明确兴趣、愿意聊的话题、自我介绍亮点、适合的互动方式、需要保护的隐私 输出，尽量具体但不要编造。\n主页可见文字：\n$source"
+                val analysis=graph.chat.complete(config.profile,listOf(PromptMessage("system","你是谨慎的个人主页资料整理助手。不得推断敏感属性。"),PromptMessage("user",prompt)),Cancellation(),1800)
+                graph.profiles.saveSelfHomepage(platform,source,analysis)
+                main.post { if(instance===this && !stopping) showProfileAnalysisResult("我的主页资料已分析并保存。后续开启自动灵魂匹配时，将使用这份资料与对方主页比较。\n\n$analysis",platform,source) }
+            } catch(error:Exception) { val message=graph.safeError(error);main.post { if(instance===this) notifyUser("我的主页分析失败：$message") } }
         }
     }
+
+    private fun analyzeProfileRecord(record:com.loveadvisor.android.memory.ProfileAnalysisRecord,isSelf:Boolean) {
+        val config=graph.settings.load()
+        if(config.profile.apiKey.isBlank()) { notifyUser("请先配置对话模型 API Key");return }
+        if(config.profile.selectedModelId.isNullOrBlank()) { notifyUser("请先选择对话模型");return }
+        notifyUser("正在分析${record.platform}主页…")
+        profileWorker.execute {
+            try {
+                val prompt="你是谨慎、尊重边界的社交主页分析助手。只根据以下可见资料分析，不猜测外貌、收入、身份、敏感属性或未展示信息。请用中文输出：主页信息摘要、兴趣与可能话题、适合的沟通切入点、需要避免的误判、5条自然不冒犯的私聊开场白。\n主页可见文字：\n${record.visibleText}"
+                val analysis=graph.chat.complete(config.profile,listOf(PromptMessage("system","你是社交主页分析助手。必须基于可见资料，不做敏感属性推断。"),PromptMessage("user",prompt)),Cancellation(),1800)
+                graph.profiles.rememberProfileAnalysis(record.platform,record.visibleText,analysis)
+                var finalText=analysis
+                var score:Int?=null
+                var bestMessage:String?=null
+                val currentSettings=graph.settings.load()
+                if(!isSelf && currentSettings.autoSoulMatchEnabled) {
+                    val own=graph.profiles.load().selfHomepage
+                    if(own==null || own.analysis.isBlank()) finalText+="\n\n【灵魂匹配】尚未保存‘我的主页分析’，请先在回复风格设置中保存个人主页资料。"
+                    else {
+                        val matchPrompt="比较‘我的主页资料’与‘对方主页资料’，只根据双方明确展示的兴趣、话题和沟通偏好判断共同话题与互动契合度。不要根据敏感属性打分，不要把匹配度说成真实成功概率。给出0-100的启发式匹配度，并推荐一条最自然、最可能获得回应的开场白。严格按以下格式输出：\n匹配度：NN%\n匹配理由：...\n最佳开场白：...\n需要注意：...\n\n我的主页分析：\n${own.analysis}\n\n对方主页分析：\n$analysis"
+                        val match=graph.chat.complete(currentSettings.profile,listOf(PromptMessage("system","你是社交兴趣匹配助手，输出谨慎、尊重边界。匹配度是启发式参考，不是概率承诺。"),PromptMessage("user",matchPrompt)),Cancellation(),1200)
+                        score=Regex("匹配度\\s*[：:]?\\s*(100|[0-9]{1,2})\\s*%?").find(match)?.groupValues?.getOrNull(1)?.toIntOrNull()?.coerceIn(0,100)
+                        bestMessage=Regex("(?:最佳开场白|最建议发送|建议回复)[：:]\\s*[‘’\"“]?([^\\n’\"”]{2,120})").find(match)?.groupValues?.getOrNull(1)?.trim()?.trimEnd('。','！','!')
+                        val actualScore=score ?: 0
+                        graph.profiles.rememberProfileMatch(record.platform,actualScore,bestMessage.orEmpty(),match)
+                        finalText+="\n\n【自动灵魂匹配】\n匹配度：${score?.let { "$it%" } ?: "未能识别"}\n${match}"
+                        val threshold=currentSettings.soulMatchThreshold.coerceIn(0,100)
+                        if(score!=null && score>=threshold && !bestMessage.isNullOrBlank()) {
+                            pendingProfileReply=PendingProfileReply(bestMessage!!,currentSettings.soulMatchAutoSend)
+                            main.post {
+                                if(instance===this && !stopping) {
+                                    notifyUser("匹配度${score}%达到设定值${threshold}%，正在返回聊天页面…")
+                                    performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK)
+                                    main.postDelayed({ if(instance===this && !stopping) captureNow() },1200)
+                                }
+                            }
+                        }
+                    }
+                }
+                main.post { if(instance===this && !stopping) showProfileAnalysisResult(finalText,record.platform,record.visibleText) }
+            } catch(error:Exception) { val message=graph.safeError(error);main.post { if(instance===this) notifyUser("主页分析失败：$message") } }
+        }
+    }
+
     fun showProfileAnalysisResult(result:String,platform:String="主页",source:String="") { if(::overlay.isInitialized && overlayAllowed()) overlay.showProfileAnalysisResult(result,platform,source) else notifyUser("主页分析已完成，请重新打开悬浮窗查看") }
     fun settingsChanged() { if(::island.isInitialized && !graph.settings.load().nativeIslandEnabled) { if(graph.settings.load().topCapsuleEnabled)island.suspend() else island.stop() };if(!canObserve()) leaveForeground() else checkForeground() }
     fun stopAssistance() {

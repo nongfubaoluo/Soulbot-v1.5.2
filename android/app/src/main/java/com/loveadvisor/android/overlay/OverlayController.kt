@@ -197,7 +197,7 @@ class OverlayController(private val service:ChatCaptureService) {
             }
         },{ service.refresh() },{ service.captureNow() },{ anchor ->
             panel?.toggleMenu(listOf("回复风格设置" to { editReplyStyle() },"悬浮窗设置" to { editOverlaySettings() },"模型设置" to { editModelSettings() }),capsuleMenuControls())
-        },{ hide() },{ graph.tracker.isCurrent(it) && ChatApps.supported(it.packageName) },{ graph.settings.load().reducedMotion },{ plan,token,callback -> service.describe(plan,token,callback) },if(native) PanelDragMode.TOP_GRIP else PanelDragMode.TITLE,onResize={ layout() },frosted=useFrostedWindow,onEditingFocus={ panelEditingFocus(it) },onAnalyze={ showMessageAnalysis() },onProfileAnalyze={ startProfileAnalysis() })
+        },{ hide() },{ graph.tracker.isCurrent(it) && ChatApps.supported(it.packageName) },{ graph.settings.load().reducedMotion },{ plan,token,callback -> service.describe(plan,token,callback) },if(native) PanelDragMode.TOP_GRIP else PanelDragMode.TITLE,onResize={ layout() },frosted=useFrostedWindow,onEditingFocus={ panelEditingFocus(it) },onAnalyze={ showMessageAnalysis() },onProfileRead={ service.readProfileAccessibilityPage() },onProfileAnalyze={ service.analyzeReadProfile() })
         view.contentDescription="聊天候选面板"
         panel=view; panelParams=params(1,1,"LoveAdvisorPanel"); panelOnLeft=null
         view.setOnApplyWindowInsetsListener { _,insets ->
@@ -247,7 +247,7 @@ class OverlayController(private val service:ChatCaptureService) {
                 { value -> graph.settings.update { if(kind==com.loveadvisor.core.model.ChatKind.GROUP)it.copy(globalGroupReplyStyle=value) else it.copy(globalReplyStyle=value) };service.notifyUser("全对象风格已保存，下次生成或刷新时生效") },
                 { panel?.closeStyleEditor() },onChooseObject={ entries,selected ->
                     view.showPage("style-objects",SavedStylePickerView(service,entries,{ entry -> selected(entry);view.popPage() },{ view.popPage() },{ selected(null);view.popPage() }),editable=true)
-                },kind=kind,nicknameFromOcr=service.lastStyleNicknameFromOcr)
+                },kind=kind,nicknameFromOcr=service.lastStyleNicknameFromOcr,onMyHomepage={ openMyHomepageSettings(view) })
             view.fillResult("风格设置已打开；保存后在下一次生成或刷新时生效")
             view.showStyleEditor(editor) {}
             }
@@ -305,8 +305,8 @@ class OverlayController(private val service:ChatCaptureService) {
         }
     }
     private fun readSnapshot()=service.currentChatSnapshot?.takeIf { graph.tracker.currentToken!=null && graph.tracker.lastSnapshot==it }
-    private fun startProfileAnalysis() {
-        service.startProfileAccessibilityAnalysis()
+    private fun openMyHomepageSettings(view:AdvisorPanelView) {
+        view.showPage("my-homepage-analysis",MyHomepageSettingsView(service,graph,{ service.startMyHomepageAnalysis() },{ view.popPage() }),editable=true)
     }
     fun showProfileAnalysisResult(result:String,platform:String="主页",source:String="") {
         val view=panel ?: run { showPanel(false);panel } ?: return

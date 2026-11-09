@@ -26,8 +26,9 @@ class NodeSnapshotReader(private val service:AccessibilityService) {
         val selected=ForegroundWindowSelector.select(apps.map { AppWindow(it.id,it.isFocused,it.isActive,it.layer) },overlayActive=transient.any { it.isActive },overlayFocused=transient.any { it.isFocused }) ?: return null
         return apps.firstOrNull { it.id==selected.id }
     }
-    /** Read visible text from the foreground application window. Avoid rootInActiveWindow:
-     * after a floating-panel button is tapped it can refer to our own accessibility overlay.
+
+    /** Read visible text from the foreground application window, not rootInActiveWindow
+     * which can point at this service's own accessibility overlay.
      */
     fun readVisibleApplicationText(expectedPackages:Set<String>):Pair<String,String>? {
         val application=applicationWindow() ?: return null
@@ -43,13 +44,31 @@ class NodeSnapshotReader(private val service:AccessibilityService) {
             if(desc.length in 2..300) lines.add(desc)
             for(i in 0 until node.childCount.coerceAtMost(80)) {
                 if(lines.size>=240) break
-                val child=runCatching { node.getChild(i) }.getOrNull()
-                walk(child,depth+1)
+                walk(runCatching { node.getChild(i) }.getOrNull(),depth+1)
             }
         }
         walk(root,0)
         return pkg to lines.joinToString("\n").take(12000)
     }
+
+    /** Click a visible send control only when the composer still contains the exact expected text. */
+    fun clickSendMessageIfSafe(expectedText:String):Boolean {
+        val root=applicationWindow()?.root ?: return false
+        var composerMatches=0
+        var sendNodes=mutableListOf<AccessibilityNodeInfo>()
+        fun walk(node:AccessibilityNodeInfo?,depth:Int) {
+            if(node==null || depth>32) return
+            if(node.isVisibleToUser && (node.isEditable || node.className?.toString()?.endsWith("EditText")==true) && node.text?.toString()==expectedText) composerMatches++
+            val label=(node.text?.toString().orEmpty()+" "+node.contentDescription?.toString().orEmpty()).trim()
+            val rect=Rect();node.getBoundsInScreen(rect)
+            if(node.isVisibleToUser && node.isEnabled && node.isClickable && (label.equals("发送",true) || label.equals("send",true) || label.contains("发送消息")) && rect.height()>0) sendNodes.add(node)
+            for(i in 0 until node.childCount.coerceAtMost(80)) walk(runCatching { node.getChild(i) }.getOrNull(),depth+1)
+        }
+        walk(root,0)
+        if(composerMatches!=1 || sendNodes.size!=1) return false
+        return runCatching { sendNodes.single().performAction(AccessibilityNodeInfo.ACTION_CLICK) }.getOrDefault(false)
+    }
+
     /** Passive foreground detection reads package/window metadata only, never message nodes. */
     fun foreground():WindowSnapshot? {
         val application=applicationWindow() ?: return null
