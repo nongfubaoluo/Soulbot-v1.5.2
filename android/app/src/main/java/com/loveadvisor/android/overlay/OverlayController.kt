@@ -306,7 +306,11 @@ class OverlayController(private val service:ChatCaptureService) {
     }
     private fun readSnapshot()=service.currentChatSnapshot?.takeIf { graph.tracker.currentToken!=null && graph.tracker.lastSnapshot==it }
     private fun openMyHomepageSettings(view:AdvisorPanelView) {
-        view.showPage("my-homepage-analysis",MyHomepageSettingsView(service,graph,{ service.startMyHomepageAnalysis() },{ view.popPage() }),editable=true)
+        lateinit var settingsPage:MyHomepageSettingsView
+        settingsPage=MyHomepageSettingsView(service,graph,{
+            service.startMyHomepageAnalysis { settingsPage.reloadSavedProfile() }
+        },{ view.popPage() })
+        view.showPage("my-homepage-analysis",settingsPage,editable=true)
     }
     fun setProfileReadStatus(read:Boolean,detail:String="") { panel?.setProfileReadStatus(read,detail) }
     fun showProfileAnalysisResult(result:String,platform:String="主页",source:String="") {

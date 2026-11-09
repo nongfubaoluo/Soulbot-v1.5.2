@@ -59,6 +59,16 @@ class MyHomepageSettingsView(
         addView(palette.actionButton("返回回复风格",heightDp=42) { onBack() },row(0))
         refreshSummary()
     }
+    /** Reload the profile after background analysis has persisted it. */
+    fun reloadSavedProfile() {
+        val own=graph.profiles.load().selfHomepage
+        if(own!=null) {
+            ownPlatform=own.platform
+            sourceInput.setText(own.visibleText)
+            parametersInput.setText(own.analysis)
+        }
+        refreshSummary()
+    }
     private fun refreshSummary() {
         val data=graph.profiles.load();val own=data.selfHomepage
         summary.text=buildString {

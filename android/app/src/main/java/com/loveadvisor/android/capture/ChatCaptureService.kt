@@ -717,7 +717,7 @@ class ChatCaptureService:AccessibilityService() {
     }
 
     /** Read, analyze and persist the user's own profile from the currently open self-profile page. */
-    fun startMyHomepageAnalysis() {
+    fun startMyHomepageAnalysis(onSaved:()->Unit={}) {
         val (platform,source)=readProfilePage() ?: return
         notifyUser("正在分析并保存我的${platform}主页…")
         profileWorker.execute {
@@ -728,7 +728,13 @@ class ChatCaptureService:AccessibilityService() {
                 val prompt="请整理用户自己的社交主页资料，供后续与其他主页进行兴趣和话题匹配。只根据可见文字，不推断敏感属性或未展示事实。请按：个人资料摘要、明确兴趣、愿意聊的话题、自我介绍亮点、适合的互动方式、需要保护的隐私 输出，尽量具体但不要编造。\n主页可见文字：\n$source"
                 val analysis=graph.chat.complete(config.profile,listOf(PromptMessage("system","你是谨慎的个人主页资料整理助手。不得推断敏感属性。"),PromptMessage("user",prompt)),Cancellation(),1800)
                 graph.profiles.saveSelfHomepage(platform,source,analysis)
-                main.post { if(instance===this && !stopping) showProfileAnalysisResult("我的主页资料已分析并保存。后续开启自动灵魂匹配时，将使用这份资料与对方主页比较。\n\n$analysis",platform,source) }
+                main.post {
+                    if(instance===this && !stopping) {
+                        // Refresh the editor from the persisted record before opening the result page.
+                        onSaved()
+                        showProfileAnalysisResult("我的主页资料已分析并保存。后续开启自动灵魂匹配时，将使用这份资料与对方主页比较。\n\n$analysis",platform,source)
+                    }
+                }
             } catch(error:Exception) { val message=graph.safeError(error);main.post { if(instance===this) notifyUser("我的主页分析失败：$message") } }
         }
     }

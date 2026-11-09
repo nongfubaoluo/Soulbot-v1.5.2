@@ -33,7 +33,10 @@ class ReplyCardView(context:Context,index:Int,plan:ReplyPlan,onCopy:()->Unit,onF
             gravity=Gravity.TOP
             layoutParams=LayoutParams(-1,-2).apply { topMargin=ViewStyles.dp(context,if(compact) 4f else 6f) }
         }; copyButton=actionButton("复制",false,onCopy);actions.addView(copyButton)
-        fillButton=onFill?.let { action -> actionButton("填入",true,action).also { actions.addView(it) } }; addView(actions)
+        fillButton=onFill?.let { action -> actionButton("输入",true,action).also {
+            it.contentDescription="将这条推荐回复直接输入当前聊天对话框"
+            actions.addView(it)
+        } }; addView(actions)
         var fetched=plan.reason.isNotBlank();var busy=false
         fun show(value:ReplyDetail?,error:String?) {
             details.removeAllViews()
