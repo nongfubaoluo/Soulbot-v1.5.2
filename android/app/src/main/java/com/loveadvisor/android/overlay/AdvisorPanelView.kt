@@ -13,7 +13,7 @@ import com.loveadvisor.core.model.SessionToken
 
 enum class PanelDragMode { TITLE, TOP_GRIP }
 data class CapsuleMenuControls(val locked:Boolean,val scale:Float,val toggleLock:()->Boolean,val resize:(Float,Boolean)->Unit,val finishResize:()->Unit)
-class AdvisorPanelView(context:Context,private val onCopy:(ReplyPlan)->Unit,private val onFill:(ReplyPlan,SessionToken)->Unit,private val onRefresh:()->Unit,onRead:()->Unit,onMenu:(View)->Unit,onClose:()->Unit,private val isCurrent:(SessionToken)->Boolean,private val reduced:()->Boolean,private val onDetails:((ReplyPlan,SessionToken,(ReplyDetail?,String?)->Unit)->Unit)?=null,dragMode:PanelDragMode=PanelDragMode.TITLE,private val onResize:()->Unit={},private val frosted:Boolean=false,private val onEditingFocus:(Boolean)->Unit={},onAnalyze:()->Unit={},onProfileRead:()->Unit={},onProfileAnalyze:()->Unit={}):FrameLayout(context) {
+class AdvisorPanelView(context:Context,private val onCopy:(ReplyPlan)->Unit,private val onFill:(ReplyPlan,SessionToken)->Unit,private val onRefresh:()->Unit,onRead:()->Unit,onMenu:(View)->Unit,onClose:()->Unit,private val isCurrent:(SessionToken)->Boolean,private val reduced:()->Boolean,private val onDetails:((ReplyPlan,SessionToken,(ReplyDetail?,String?)->Unit)->Unit)?=null,dragMode:PanelDragMode=PanelDragMode.TITLE,private val onResize:()->Unit={},private val frosted:Boolean=false,private val onEditingFocus:(Boolean)->Unit={},onAnalyze:()->Unit={},onProfileRead:()->Unit={},onProfileAnalyze:()->Unit={},onOpenMyHomepage:()->Unit={}):FrameLayout(context) {
     val dragHandle:View
     private val palette=PanelPalette(context,frosted)
     private val scoreLabel=if(com.loveadvisor.android.AppGraph.get(context).settings.load().judgeProvider=="CUSTOM")"评分" else "Jev"
@@ -23,6 +23,7 @@ class AdvisorPanelView(context:Context,private val onCopy:(ReplyPlan)->Unit,priv
     private val analysisRow:LinearLayout
     private var shortActionLabels=false
     private val analyze:Button
+    private val profileReadStatus:TextView
     private var analysisAvailable=false
     private var readContextTitle:String?=null
     private var statusMessage="等待点击读取；聊天变化不会自动请求模型"
@@ -52,6 +53,8 @@ class AdvisorPanelView(context:Context,private val onCopy:(ReplyPlan)->Unit,priv
             grip
         } else title
         header.addView(title,LinearLayout.LayoutParams(0,-1,1f))
+        val ownProfile=palette.button("我的主页分析") { onOpenMyHomepage() }.apply { textSize=9.5f;setPadding(dp(3),0,dp(3),0);contentDescription="打开我的主页分析和主页参数编辑" }
+        header.addView(ownProfile,LinearLayout.LayoutParams(dp(66),textRowHeight(28)).apply { rightMargin=dp(5) })
         val menu=palette.button("⋯") {}; menu.contentDescription="更多设置"
         menu.setOnClickListener { com.loveadvisor.android.diagnostics.DiagnosticLogs.dispatch("更多设置") { onMenu(menu) } }
         header.addView(menu,LinearLayout.LayoutParams(textRowHeight(28),textRowHeight(28)))
@@ -68,10 +71,12 @@ class AdvisorPanelView(context:Context,private val onCopy:(ReplyPlan)->Unit,priv
         listOf(analyze,read).forEach { it.textSize=10.5f;it.setPadding(dp(4),0,dp(4),0) }
         column.addView(analysisRow,rowParams(-2,5))
         val profileRow=ViewStyles.row(context).apply { gravity=Gravity.CENTER_VERTICAL }
-        val profileRead=palette.button("主页读取") { onProfileRead() }.apply { contentDescription="读取当前 Soul 或牵手主页资料";textSize=10.5f }
-        val profileAnalyze=palette.button("主页分析") { onProfileAnalyze() }.apply { contentDescription="分析已读取的 Soul 或牵手主页并进行灵魂匹配";textSize=10.5f }
-        profileRow.addView(profileRead,LinearLayout.LayoutParams(dp(52),textRowHeight(28)).apply { rightMargin=dp(4) })
-        profileRow.addView(profileAnalyze,LinearLayout.LayoutParams(dp(52),textRowHeight(28)))
+        profileReadStatus=palette.text("主页未读取",10f,palette.muted).apply { maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END }
+        profileRow.addView(profileReadStatus,LinearLayout.LayoutParams(0,-2,1f).apply { rightMargin=dp(4) })
+        val profileAnalyze=palette.button("主页分析") { onProfileAnalyze() }.apply { contentDescription="分析已读取的 Soul 或牵手主页并进行灵魂匹配";textSize=10.5f;setPadding(dp(4),0,dp(4),0) }
+        val profileRead=palette.button("读取主页") { onProfileRead() }.apply { contentDescription="读取当前 Soul 或牵手主页资料";textSize=10.5f;setPadding(dp(4),0,dp(4),0) }
+        profileRow.addView(profileAnalyze,LinearLayout.LayoutParams(dp(52),textRowHeight(28)).apply { rightMargin=dp(4) })
+        profileRow.addView(profileRead,LinearLayout.LayoutParams(dp(52),textRowHeight(28)))
         column.addView(profileRow,rowParams(-2,5))
         status=palette.text(statusMessage,11f,palette.muted).apply { maxLines=2 }
         column.addView(status,rowParams(-2,10))
@@ -125,6 +130,7 @@ class AdvisorPanelView(context:Context,private val onCopy:(ReplyPlan)->Unit,priv
     fun setReading(value:Boolean) { reading=value; updateButtons() }
     fun setAnalysisAvailable(value:Boolean) { analysisAvailable=value;updateButtons() }
     fun setReadContext(title:String?) { readContextTitle=title;renderStatus() }
+    fun setProfileReadStatus(read:Boolean,detail:String="") { profileReadStatus.text=if(read) "主页已读取${if(detail.isNotBlank()) " · $detail" else ""}" else "主页未读取";profileReadStatus.setTextColor(if(read) palette.blue else palette.muted) }
     fun setFilling(value:Boolean) { filling=value; updateButtons() }
     private fun renderStatus() { status.text=readContextTitle?.let { "已读：$it\n$statusMessage" } ?: statusMessage;invalidateHeight() }
     fun fillResult(message:String) { statusMessage=message;renderStatus() }

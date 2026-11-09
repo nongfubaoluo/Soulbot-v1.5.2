@@ -197,7 +197,7 @@ class OverlayController(private val service:ChatCaptureService) {
             }
         },{ service.refresh() },{ service.captureNow() },{ anchor ->
             panel?.toggleMenu(listOf("回复风格设置" to { editReplyStyle() },"悬浮窗设置" to { editOverlaySettings() },"模型设置" to { editModelSettings() }),capsuleMenuControls())
-        },{ hide() },{ graph.tracker.isCurrent(it) && ChatApps.supported(it.packageName) },{ graph.settings.load().reducedMotion },{ plan,token,callback -> service.describe(plan,token,callback) },if(native) PanelDragMode.TOP_GRIP else PanelDragMode.TITLE,onResize={ layout() },frosted=useFrostedWindow,onEditingFocus={ panelEditingFocus(it) },onAnalyze={ showMessageAnalysis() },onProfileRead={ service.readProfileAccessibilityPage() },onProfileAnalyze={ service.analyzeReadProfile() })
+        },{ hide() },{ graph.tracker.isCurrent(it) && ChatApps.supported(it.packageName) },{ graph.settings.load().reducedMotion },{ plan,token,callback -> service.describe(plan,token,callback) },if(native) PanelDragMode.TOP_GRIP else PanelDragMode.TITLE,onResize={ layout() },frosted=useFrostedWindow,onEditingFocus={ panelEditingFocus(it) },onAnalyze={ showMessageAnalysis() },onProfileRead={ service.readProfileAccessibilityPage() },onProfileAnalyze={ service.analyzeReadProfile() },onOpenMyHomepage={ panel?.let { openMyHomepageSettings(it) } })
         view.contentDescription="聊天候选面板"
         panel=view; panelParams=params(1,1,"LoveAdvisorPanel"); panelOnLeft=null
         view.setOnApplyWindowInsetsListener { _,insets ->
@@ -308,6 +308,7 @@ class OverlayController(private val service:ChatCaptureService) {
     private fun openMyHomepageSettings(view:AdvisorPanelView) {
         view.showPage("my-homepage-analysis",MyHomepageSettingsView(service,graph,{ service.startMyHomepageAnalysis() },{ view.popPage() }),editable=true)
     }
+    fun setProfileReadStatus(read:Boolean,detail:String="") { panel?.setProfileReadStatus(read,detail) }
     fun showProfileAnalysisResult(result:String,platform:String="主页",source:String="") {
         val view=panel ?: run { showPanel(false);panel } ?: return
         view.showPage("profile-analysis",ProfileAnalysisResultView(service,result,platform,source))

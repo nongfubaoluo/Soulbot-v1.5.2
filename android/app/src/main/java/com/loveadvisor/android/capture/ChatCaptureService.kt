@@ -706,6 +706,7 @@ class ChatCaptureService:AccessibilityService() {
     fun readProfileAccessibilityPage() {
         val (platform,source)=readProfilePage() ?: return
         graph.profiles.rememberTargetHomepage(platform,source)
+        if(::overlay.isInitialized) overlay.setProfileReadStatus(true,"${source.length}字")
         notifyUser("已读取${platform}主页资料（${source.length}字），点击主页分析进行分析和匹配")
     }
 

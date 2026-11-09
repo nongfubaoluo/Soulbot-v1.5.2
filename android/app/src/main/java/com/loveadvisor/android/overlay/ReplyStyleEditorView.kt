@@ -40,7 +40,6 @@ class ReplyStyleEditorView(
     init {
         orientation=VERTICAL
         addView(palette.text("回复风格",19f,palette.ink,true),row(8))
-        addView(palette.actionButton("我的主页分析 · 保存个人主页资料",heightDp=42) { onMyHomepage() },row(14))
         scopeGroup.orientation=RadioGroup.HORIZONTAL
         for(button in listOf(dedicated,global)) {
             button.buttonDrawable=null;button.gravity=Gravity.CENTER;button.textSize=13f
