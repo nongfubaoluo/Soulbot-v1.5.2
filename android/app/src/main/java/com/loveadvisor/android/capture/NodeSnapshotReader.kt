@@ -26,6 +26,30 @@ class NodeSnapshotReader(private val service:AccessibilityService) {
         val selected=ForegroundWindowSelector.select(apps.map { AppWindow(it.id,it.isFocused,it.isActive,it.layer) },overlayActive=transient.any { it.isActive },overlayFocused=transient.any { it.isFocused }) ?: return null
         return apps.firstOrNull { it.id==selected.id }
     }
+    /** Read visible text from the foreground application window. Avoid rootInActiveWindow:
+     * after a floating-panel button is tapped it can refer to our own accessibility overlay.
+     */
+    fun readVisibleApplicationText(expectedPackages:Set<String>):Pair<String,String>? {
+        val application=applicationWindow() ?: return null
+        val root=application.root ?: return null
+        val pkg=root.packageName?.toString()?.takeIf { it in expectedPackages } ?: return null
+        val lines=linkedSetOf<String>()
+        fun walk(node:AccessibilityNodeInfo?,depth:Int) {
+            if(node==null || depth>32 || lines.size>=240) return
+            if(depth>0 && !node.isVisibleToUser) return
+            val text=node.text?.toString()?.trim().orEmpty()
+            val desc=node.contentDescription?.toString()?.trim().orEmpty()
+            if(text.length in 2..500) lines.add(text)
+            if(desc.length in 2..300) lines.add(desc)
+            for(i in 0 until node.childCount.coerceAtMost(80)) {
+                if(lines.size>=240) break
+                val child=runCatching { node.getChild(i) }.getOrNull()
+                walk(child,depth+1)
+            }
+        }
+        walk(root,0)
+        return pkg to lines.joinToString("\n").take(12000)
+    }
     /** Passive foreground detection reads package/window metadata only, never message nodes. */
     fun foreground():WindowSnapshot? {
         val application=applicationWindow() ?: return null

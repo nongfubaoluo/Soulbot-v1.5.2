@@ -676,35 +676,44 @@ class ChatCaptureService:AccessibilityService() {
     fun showFloating() { graph.settings.update { it.copy(overlayEnabled=true) }; checkForeground() }
     /** Explicit user action only: read visible accessibility text from Soul/Tantan profile page. */
     fun startProfileAccessibilityAnalysis() {
-        if(!::reader.isInitialized) { notifyUser("无障碍服务尚未连接"); return }
-        val pkg=foregroundPackage ?: run { notifyUser("请先打开 Soul 或牵手的个人主页"); return }
-        val platform=when(pkg) { ChatApps.SOUL -> "Soul"; ChatApps.QIANSHOU -> "牵手"; else -> { notifyUser("请在 Soul 或牵手主页中使用主页分析"); return } }
-        val root=try { rootInActiveWindow } catch(_:Exception) { null }
-        if(root==null) { notifyUser("未能读取当前页面，请返回个人主页后重试"); return }
-        val lines=ArrayList<String>(96)
-        fun walk(node:AccessibilityNodeInfo?,depth:Int) {
-            if(node==null || depth>28 || lines.size>=240) return
-            val text=node.text?.toString()?.trim().orEmpty()
-            val desc=node.contentDescription?.toString()?.trim().orEmpty()
-            if(text.length in 2..500 && text !in lines) lines.add(text)
-            if(desc.length in 2..300 && desc !in lines) lines.add(desc)
-            for(i in 0 until minOf(node.childCount,80)) walk(try { node.getChild(i) } catch(_:Exception) { null },depth+1)
+        if(stopping) { notifyUser("辅助服务正在停止，请稍后重试"); return }
+        if(!::reader.isInitialized) { notifyUser("无障碍服务尚未连接，请先开启军师无障碍权限"); return }
+        notifyUser("正在读取当前 Soul / 牵手主页…")
+        val captured=try {
+            reader.readVisibleApplicationText(setOf(ChatApps.SOUL,ChatApps.QIANSHOU))
+        } catch(error:Exception) {
+            Logs.failed(LogStep.READ_NATIVE,error)
+            notifyUser("读取主页失败：${graph.safeError(error)}")
+            return
         }
-        walk(root,0)
-        val source=lines.joinToString("\n").take(12000)
-        if(source.length<12) { notifyUser("当前主页没有可读取的文字；请确认页面已加载，且应用允许无障碍读取"); return }
-        val snapshot=source
-        notifyUser("已读取${platform}主页文字，正在生成分析…")
+        if(captured==null) {
+            notifyUser("未检测到 Soul 或牵手主页。请先打开对方主页，再点击主页分析")
+            return
+        }
+        val (pkg,snapshot)=captured
+        val platform=when(pkg) {
+            ChatApps.SOUL -> "Soul"
+            ChatApps.QIANSHOU -> "牵手"
+            else -> { notifyUser("当前应用暂不支持主页分析"); return }
+        }
+        if(snapshot.length<12) {
+            notifyUser("已连接 $platform，但没有读取到主页文字。请等待资料加载完成后重试")
+            return
+        }
+        val config=graph.settings.load()
+        if(config.profile.apiKey.isBlank()) { notifyUser("请先在模型设置中填写对话模型 API Key"); return }
+        if(config.profile.selectedModelId.isNullOrBlank()) { notifyUser("请先在模型设置中选择对话模型"); return }
+        notifyUser("已读取 $platform 主页，正在分析…")
         profileWorker.execute {
             try {
-                val config=graph.settings.load()
                 val prompt="你是谨慎、尊重边界的社交沟通助手。以下是用户当前主动打开的${platform}个人主页中由Android无障碍接口读取到的可见文字。只依据这些文字分析，不猜测外貌、收入、身份、性格诊断或未展示信息；资料不足要明确说明。请用中文按以下结构输出：\n【主页信息摘要】\n【兴趣与可能话题】\n【适合的沟通切入点】\n【需要避免的误判】\n【私聊开场白】给出5条自然、不油腻、不冒犯的短句。\n\n主页可见文字：\n$snapshot"
                 val result=graph.chat.complete(config.profile,listOf(PromptMessage("system","你是社交主页分析助手。分析必须基于可见资料，不做敏感属性推断。"),PromptMessage("user",prompt)),Cancellation(),1800)
+                if(result.isBlank()) throw IllegalStateException("模型返回内容为空")
                 graph.profiles.rememberProfileAnalysis(platform,snapshot,result)
                 main.post { if(instance===this && !stopping) showProfileAnalysisResult(result,platform,snapshot) }
             } catch(error:Exception) {
                 val message=graph.safeError(error)
-                main.post { if(instance===this) notifyUser("主页分析失败：$message") }
+                main.post { if(instance===this && !stopping) notifyUser("主页分析失败：$message") }
             }
         }
     }

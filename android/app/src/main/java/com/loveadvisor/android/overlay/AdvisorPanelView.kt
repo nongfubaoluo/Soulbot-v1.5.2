@@ -67,7 +67,7 @@ class AdvisorPanelView(context:Context,private val onCopy:(ReplyPlan)->Unit,priv
         analysisRow.addView(read,LinearLayout.LayoutParams(dp(52),textRowHeight(28)).apply { leftMargin=dp(4) })
         listOf(analyze,read).forEach { it.textSize=10.5f;it.setPadding(dp(4),0,dp(4),0) }
         column.addView(analysisRow,rowParams(-2,5))
-        val profileAnalyze=palette.button("主页分析 · Soul / 牵手") { onProfileAnalyze() }.apply { contentDescription="选择 Soul 或牵手主页截图并分析";textSize=11f }
+        val profileAnalyze=palette.button("主页分析 · Soul / 牵手") { onProfileAnalyze() }.apply { contentDescription="读取当前 Soul 或牵手主页并分析";textSize=11f }
         column.addView(profileAnalyze,rowParams(textRowHeight(30),7))
         status=palette.text(statusMessage,11f,palette.muted).apply { maxLines=2 }
         column.addView(status,rowParams(-2,10))

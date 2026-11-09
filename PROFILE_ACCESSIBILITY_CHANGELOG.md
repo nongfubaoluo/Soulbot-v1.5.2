@@ -12,3 +12,10 @@
 无障碍只能读取目标应用实际暴露给 Accessibility API 的文本节点。若某些资料仅绘制在图片/Canvas/WebView 且未暴露文本节点，应用不会猜测或伪造该内容；此时会提示可读取内容不足。
 
 本次环境无法下载 Gradle 8.9（`services.gradle.org` DNS/网络不可达），因此没有声称 APK 编译通过。请在可用 Android Studio/Gradle 环境执行 `:app:assembleDebug` 并进行 Soul、牵手真机验证。
+
+
+## 主页分析点击无响应修复
+- 主页分析按钮点击后立即给出读取状态提示。
+- 不再使用 `rootInActiveWindow`，改为通过 `NodeSnapshotReader` 选择前台应用窗口，避免读到军师自己的悬浮窗。
+- 对未打开支持应用、主页无可见文字、未配置 API Key/模型等情况显示明确提示。
+- 仅在模型返回非空分析后保存记录并展示结果。
