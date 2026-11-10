@@ -1,26 +1,3 @@
-# V1.5.2 profile analysis overlay update
-
-- Added a dedicated “主页分析 · Soul / 牵手” entry to the existing floating assistant panel.
-- Added image selection for Soul and 牵手 profile screenshots, using the configured vision model.
-- Added profile-specific analysis prompts for visible profile details, interests, conversation topics, suggested openers, and respectful boundaries.
-- Added an in-panel, scrollable result page with copy support.
-- Restored 43 URL-escaped knowledge asset filenames so all 46 entries in `knowledge/index.json` resolve to packaged files.
-- Existing chat analysis and reply generation flows remain in place.
-
-## V1.5.2
-
-- 新增独立的主页资料分析与私聊开场白页面，复用现有模型配置和 Chat Completions 客户端。
-- 分析与开场白均由用户手动粘贴资料并主动触发；新增隐私提示、结果展示与复制。
-- 原有聊天悬浮窗、对话分析、回复生成及设置流程保持不变。
-
-## V1.5.1 · Soul 与牵手视觉识别适配（源码预览，未构建 APK）
-
-- 版本代码43。保留原有微信、QQ、抖音及既有功能，继续支持 Soul（`cn.soulapp.android`）与牵手（`com.tantan.x`）。
-- 新增平台专项视觉识别提示：Soul识别右侧青绿色与左侧浅灰气泡、头像位置、时间和底部输入提示；牵手识别左右消息头像与气泡、资料快捷话题、时间、已读回执卡片和底部输入控件。说话人必须结合头像和几何位置，不能只按颜色判断。
-- 图片和表情包仍由用户配置的视觉模型读取缩略图；读取仅在手动点击后发生。候选由用户确认，应用不会自动发送。
-- 新增 `VisualChatPlatformGuidanceTest`，覆盖两个平台的专项排除规则。离线Kotlin smoke test通过；完整Gradle单元测试与Android APK构建尚未执行，当前运行环境没有Gradle发行包/Android SDK且无法解析下载主机。
-- 当前两个平台仍使用截图＋视觉模型路径，并非已验证的专用无障碍节点适配。尚未进行Soul／牵手各版本和OnePlus/ColorOS真机验收；填入前应核对对象、消息归属和输入区域。
-
 # 更新记录
 
 记录从最初开发到当前版本的功能与修复，包含开发／测试版。曾加入后撤回的方案在对应条目说明。实际可下载的公开版本见 [GitHub Releases](https://github.com/Jacky381897524/duihua-junshi/releases)。

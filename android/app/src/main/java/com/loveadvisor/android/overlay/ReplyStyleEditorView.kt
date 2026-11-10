@@ -20,7 +20,7 @@ class ReplyStyleEditorView(
     private val onClose:()->Unit,
     private val onChooseObject:((List<ReplyStyleEntry>,(ReplyStyleEntry?)->Unit)->Unit)?=null,
     private val kind:ChatKind=ChatKind.DIRECT,
-    private val nicknameFromOcr:Boolean=false,private val onMyHomepage:()->Unit={}
+    private val nicknameFromOcr:Boolean=false
 ):LinearLayout(context) {
     private val palette=PanelPalette(context)
     val nicknameInput=field(if(kind==ChatKind.GROUP)"当前群名，可粘贴校正" else "自动带入当前昵称，可粘贴校正",observedTitle,false)
@@ -39,7 +39,7 @@ class ReplyStyleEditorView(
     private var dedicatedDraft=catalog.match(observedTitle,packageName)?.style.orEmpty()
     init {
         orientation=VERTICAL
-        addView(palette.text("回复风格",19f,palette.ink,true),row(8))
+        addView(palette.text("回复风格",19f,palette.ink,true),row(14))
         scopeGroup.orientation=RadioGroup.HORIZONTAL
         for(button in listOf(dedicated,global)) {
             button.buttonDrawable=null;button.gravity=Gravity.CENTER;button.textSize=13f

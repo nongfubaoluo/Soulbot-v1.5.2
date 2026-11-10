@@ -197,7 +197,7 @@ class OverlayController(private val service:ChatCaptureService) {
             }
         },{ service.refresh() },{ service.captureNow() },{ anchor ->
             panel?.toggleMenu(listOf("回复风格设置" to { editReplyStyle() },"悬浮窗设置" to { editOverlaySettings() },"模型设置" to { editModelSettings() }),capsuleMenuControls())
-        },{ hide() },{ graph.tracker.isCurrent(it) && ChatApps.supported(it.packageName) },{ graph.settings.load().reducedMotion },{ plan,token,callback -> service.describe(plan,token,callback) },if(native) PanelDragMode.TOP_GRIP else PanelDragMode.TITLE,onResize={ layout() },frosted=useFrostedWindow,onEditingFocus={ panelEditingFocus(it) },onAnalyze={ showMessageAnalysis() },onProfileRead={ service.readProfileAccessibilityPage() },onProfileAnalyze={ service.analyzeReadProfile() },onOpenMyHomepage={ panel?.let { openMyHomepageSettings(it) } })
+        },{ hide() },{ graph.tracker.isCurrent(it) && ChatApps.supported(it.packageName) },{ graph.settings.load().reducedMotion },{ plan,token,callback -> service.describe(plan,token,callback) },if(native) PanelDragMode.TOP_GRIP else PanelDragMode.TITLE,onResize={ layout() },frosted=useFrostedWindow,onEditingFocus={ panelEditingFocus(it) },onAnalyze={ showMessageAnalysis() })
         view.contentDescription="聊天候选面板"
         panel=view; panelParams=params(1,1,"LoveAdvisorPanel"); panelOnLeft=null
         view.setOnApplyWindowInsetsListener { _,insets ->
@@ -247,7 +247,7 @@ class OverlayController(private val service:ChatCaptureService) {
                 { value -> graph.settings.update { if(kind==com.loveadvisor.core.model.ChatKind.GROUP)it.copy(globalGroupReplyStyle=value) else it.copy(globalReplyStyle=value) };service.notifyUser("全对象风格已保存，下次生成或刷新时生效") },
                 { panel?.closeStyleEditor() },onChooseObject={ entries,selected ->
                     view.showPage("style-objects",SavedStylePickerView(service,entries,{ entry -> selected(entry);view.popPage() },{ view.popPage() },{ selected(null);view.popPage() }),editable=true)
-                },kind=kind,nicknameFromOcr=service.lastStyleNicknameFromOcr,onMyHomepage={ openMyHomepageSettings(view) })
+                },kind=kind,nicknameFromOcr=service.lastStyleNicknameFromOcr)
             view.fillResult("风格设置已打开；保存后在下一次生成或刷新时生效")
             view.showStyleEditor(editor) {}
             }
@@ -305,40 +305,6 @@ class OverlayController(private val service:ChatCaptureService) {
         }
     }
     private fun readSnapshot()=service.currentChatSnapshot?.takeIf { graph.tracker.currentToken!=null && graph.tracker.lastSnapshot==it }
-    private fun openMyHomepageSettings(view:AdvisorPanelView) {
-        lateinit var settingsPage:MyHomepageSettingsView
-        settingsPage=MyHomepageSettingsView(service,graph,{
-            service.startMyHomepageAnalysis { settingsPage.reloadSavedProfile() }
-        },{ view.popPage() })
-        view.showPage("my-homepage-analysis",settingsPage,editable=true)
-    }
-    fun setProfileReadStatus(read:Boolean,detail:String="") { panel?.setProfileReadStatus(read,detail) }
-    fun showProfileAnalysisResult(result:String,platform:String="主页",source:String="") {
-        val view=panel ?: run { showPanel(false);panel } ?: return
-        view.showPage("profile-analysis",ProfileAnalysisResultView(service,result,platform,source,{
-            view.closeStyleEditor()
-            layout()
-        },{ text -> fillHomepageOpening(view,text) }))
-        layout()
-    }
-    private fun fillHomepageOpening(view:AdvisorPanelView,text:String) {
-        val token=graph.tracker.currentToken
-        if(token==null || !graph.tracker.isCurrent(token) || readSnapshot()==null) {
-            service.notifyUser("请先进入聊天页面并点击读取信息，再输入开场白")
-            return
-        }
-        if(filling || reading || state.loading) { service.notifyUser("请等待当前操作完成");return }
-        filling=true;view.setFilling(true)
-        cancelFill=ReplyFiller(service).fill(token,text,{ draft,confirm,cancel ->
-            confirmation?.close()
-            confirmation=DraftConfirmWindow(service,draft,{ confirmation=null;confirm() },{ confirmation=null;cancel() })
-            confirmation?.show()
-        },{ success,message ->
-            cancelFill=null;filling=false;confirmation?.close();confirmation=null;view.setFilling(false)
-            view.fillResult(message);service.notifyUser(message)
-            if(success && graph.settings.load().fillPanelBehavior!="keep") hide() else layout()
-        })
-    }
     private fun showMessageAnalysis() {
         val view=panel ?: return
         val snapshot=readSnapshot()
